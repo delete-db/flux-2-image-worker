@@ -37,44 +37,13 @@ from diffusers import Flux2Pipeline, Flux2Transformer2DModel
 
 torch_dtype = torch.bfloat16
 
-if USE_QUANTIZED:
-    # Load 4-bit quantized transformer and text encoder
-    from transformers import Mistral3ForConditionalGeneration
-
-    print("  Loading 4-bit quantized transformer...")
-    transformer = Flux2Transformer2DModel.from_pretrained(
-        MODEL_PATH,
-        subfolder="transformer",
-        torch_dtype=torch_dtype,
-        device_map="cpu",
-        token=HF_TOKEN,
-    )
-
-    print("  Loading 4-bit quantized text encoder (Mistral 3)...")
-    text_encoder = Mistral3ForConditionalGeneration.from_pretrained(
-        MODEL_PATH,
-        subfolder="text_encoder",
-        torch_dtype=torch_dtype,
-        device_map="cpu",
-        token=HF_TOKEN,
-    )
-
-    print("  Loading pipeline...")
-    PIPELINE = Flux2Pipeline.from_pretrained(
-        MODEL_PATH,
-        transformer=transformer,
-        text_encoder=text_encoder,
-        torch_dtype=torch_dtype,
-        token=HF_TOKEN,
-    )
-else:
-    # Full precision — needs ~62GB VRAM
-    print("  Loading full precision pipeline...")
-    PIPELINE = Flux2Pipeline.from_pretrained(
-        MODEL_PATH,
-        torch_dtype=torch_dtype,
-        token=HF_TOKEN,
-    )
+print("  Loading pipeline from local path...")
+PIPELINE = Flux2Pipeline.from_pretrained(
+    MODEL_PATH,
+    torch_dtype=torch_dtype,
+    token=HF_TOKEN,
+    local_files_only=True,
+)
 
 if USE_CPU_OFFLOAD:
     PIPELINE.enable_model_cpu_offload()
