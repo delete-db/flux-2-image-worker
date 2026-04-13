@@ -16,8 +16,8 @@ from PIL import Image
 
 # ── Configuration ───────────────────────────────────────────
 
-# Model source: local path on volume or HuggingFace repo
-MODEL_PATH = os.environ.get("MODEL_PATH", "diffusers/FLUX.2-dev-bnb-4bit")
+MODELS_ROOT = os.environ.get("MODELS_ROOT", "/runpod-volume/ComfyUI/models")
+MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(MODELS_ROOT, "flux2-dev-4bit"))
 USE_QUANTIZED = os.environ.get("USE_QUANTIZED", "true").lower() == "true"
 USE_CPU_OFFLOAD = os.environ.get("USE_CPU_OFFLOAD", "true").lower() == "true"
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
