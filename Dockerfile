@@ -27,12 +27,16 @@ RUN python -m pip install --upgrade pip setuptools wheel
 RUN python -m pip install torch torchvision \
     --index-url https://download.pytorch.org/whl/cu128
 
-# Pinned versions — unpinned git-installs caused a load-time OOM regression on 32GB cards
+# Diffusers from git main — required for Flux2Pipeline (no released version has it yet).
+# Pin to a known-working commit rather than HEAD to keep builds reproducible.
 RUN python -m pip install \
-    "diffusers==0.32.1" \
-    "transformers==4.47.1" \
-    "accelerate==1.2.1" \
-    "bitsandbytes==0.45.0" \
+    "git+https://github.com/huggingface/diffusers.git@main"
+
+# transformers >= 4.50 required for Mistral3ForConditionalGeneration (FLUX.2 text encoder)
+RUN python -m pip install \
+    "transformers>=4.50,<4.60" \
+    "accelerate>=1.2" \
+    "bitsandbytes>=0.45" \
     "safetensors>=0.4.5" \
     sentencepiece protobuf
 

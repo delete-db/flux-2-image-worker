@@ -20,8 +20,8 @@ MODELS_ROOT = os.environ.get("MODELS_ROOT", "/runpod-volume/ComfyUI/models")
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(MODELS_ROOT, "flux2-dev-4bit"))
 USE_QUANTIZED = os.environ.get("USE_QUANTIZED", "true").lower() == "true"
 USE_CPU_OFFLOAD = os.environ.get("USE_CPU_OFFLOAD", "false").lower() == "true"
-COMPILE_TRANSFORMER = os.environ.get("COMPILE_TRANSFORMER", "true").lower() == "true"
-DEFAULT_STEPS = int(os.environ.get("DEFAULT_STEPS", "20"))
+COMPILE_TRANSFORMER = os.environ.get("COMPILE_TRANSFORMER", "false").lower() == "true"
+DEFAULT_STEPS = int(os.environ.get("DEFAULT_STEPS", "28"))
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
 WORKER_VERSION = "flux2-dev-v2-a100"
 
