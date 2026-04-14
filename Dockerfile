@@ -33,10 +33,13 @@ RUN python -m pip install \
     "git+https://github.com/huggingface/diffusers.git@main"
 
 # transformers >= 4.50 required for Mistral3ForConditionalGeneration (FLUX.2 text encoder)
+# bitsandbytes >= 0.46 has newer sm_120 (Blackwell) CUDA kernels and bug fixes.
+# Note: bnb uses NF4 (software dequant → bf16 matmul), not NVIDIA's native NVFP4.
+# Blackwell's FP4 tensor cores are not accessed through bitsandbytes.
 RUN python -m pip install \
     "transformers>=4.50,<4.60" \
     "accelerate>=1.2" \
-    "bitsandbytes>=0.45" \
+    "bitsandbytes>=0.46" \
     "safetensors>=0.4.5" \
     sentencepiece protobuf
 

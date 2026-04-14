@@ -28,10 +28,18 @@ WORKER_VERSION = "flux2-dev-v2-a100"
 # ── Load Pipeline Once ──────────────────────────────────────
 
 print(f"Worker version: {WORKER_VERSION}")
+if torch.cuda.is_available():
+    cc = torch.cuda.get_device_capability()
+    print(
+        f"  GPU: {torch.cuda.get_device_name(0)} "
+        f"(sm_{cc[0]}{cc[1]}, torch {torch.__version__})"
+    )
 print(f"Loading FLUX.2-dev pipeline...")
 print(f"  Model: {MODEL_PATH}")
 print(f"  Quantized (4-bit): {USE_QUANTIZED}")
 print(f"  CPU offload: {USE_CPU_OFFLOAD}")
+print(f"  Compile transformer: {COMPILE_TRANSFORMER}")
+print(f"  Default steps: {DEFAULT_STEPS}")
 
 load_start = time.time()
 
@@ -56,11 +64,36 @@ else:
     print("  Loaded to CUDA directly (VAE tiling on)")
 
 if COMPILE_TRANSFORMER and not USE_CPU_OFFLOAD:
-    print("  Compiling transformer (first gen will be slow, subsequent ~30% faster)...")
+    # Persist inductor cache on network volume so other workers skip recompile.
+    os.environ.setdefault(
+        "TORCHINDUCTOR_CACHE_DIR", "/runpod-volume/.torch_compile_cache"
+    )
+    print(f"  Compile cache dir: {os.environ['TORCHINDUCTOR_CACHE_DIR']}")
+
+    # Block-level compile (PyTorch-recommended for diffusion transformers):
+    # compiles repeated blocks instead of the whole model → 8–10x faster compile,
+    # same runtime speedup, and avoids the CUDAGraph tensor-overwrite bug that
+    # affects `mode="reduce-overhead"` with diffusers pipelines.
+    def _compile_block_list(name: str):
+        blocks = getattr(PIPELINE.transformer, name, None)
+        if blocks is None:
+            return 0
+        for i, block in enumerate(blocks):
+            blocks[i] = torch.compile(block, mode="default", fullgraph=False)
+        return len(blocks)
+
     try:
-        PIPELINE.transformer = torch.compile(
-            PIPELINE.transformer, mode="reduce-overhead", fullgraph=False
-        )
+        compiled = 0
+        for attr in ("transformer_blocks", "single_transformer_blocks"):
+            compiled += _compile_block_list(attr)
+        if compiled:
+            print(f"  Compiled {compiled} transformer blocks (mode=default)")
+        else:
+            # Fallback: compile full transformer if block structure differs
+            PIPELINE.transformer = torch.compile(
+                PIPELINE.transformer, mode="default", fullgraph=False
+            )
+            print("  Compiled full transformer (block list not found)")
     except Exception as exc:
         print(f"  torch.compile skipped: {exc}")
 
