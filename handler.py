@@ -19,9 +19,11 @@ from PIL import Image
 MODELS_ROOT = os.environ.get("MODELS_ROOT", "/runpod-volume/ComfyUI/models")
 MODEL_PATH = os.environ.get("MODEL_PATH", os.path.join(MODELS_ROOT, "flux2-dev-4bit"))
 USE_QUANTIZED = os.environ.get("USE_QUANTIZED", "true").lower() == "true"
-USE_CPU_OFFLOAD = os.environ.get("USE_CPU_OFFLOAD", "true").lower() == "true"
+USE_CPU_OFFLOAD = os.environ.get("USE_CPU_OFFLOAD", "false").lower() == "true"
+COMPILE_TRANSFORMER = os.environ.get("COMPILE_TRANSFORMER", "true").lower() == "true"
+DEFAULT_STEPS = int(os.environ.get("DEFAULT_STEPS", "20"))
 HF_TOKEN = os.environ.get("HF_TOKEN", None)
-WORKER_VERSION = "flux2-dev-v1"
+WORKER_VERSION = "flux2-dev-v2-a100"
 
 # ── Load Pipeline Once ──────────────────────────────────────
 
@@ -50,7 +52,17 @@ if USE_CPU_OFFLOAD:
     print("  CPU offload enabled")
 else:
     PIPELINE.to("cuda")
-    print("  Loaded to CUDA directly")
+    PIPELINE.vae.enable_tiling()
+    print("  Loaded to CUDA directly (VAE tiling on)")
+
+if COMPILE_TRANSFORMER and not USE_CPU_OFFLOAD:
+    print("  Compiling transformer (first gen will be slow, subsequent ~30% faster)...")
+    try:
+        PIPELINE.transformer = torch.compile(
+            PIPELINE.transformer, mode="reduce-overhead", fullgraph=False
+        )
+    except Exception as exc:
+        print(f"  torch.compile skipped: {exc}")
 
 load_elapsed = time.time() - load_start
 print(f"Pipeline loaded in {load_elapsed:.1f}s")
@@ -95,7 +107,7 @@ def handler(job: dict[str, Any]) -> dict[str, Any]:
 
     seed = int(job_input.get("seed", 42))
     guidance_scale = float(job_input.get("guidance_scale", 4.0))
-    num_steps = int(job_input.get("num_inference_steps", 28))
+    num_steps = int(job_input.get("num_inference_steps", DEFAULT_STEPS))
     output_format = job_input.get("output_format", "png").upper()
     if output_format not in ("PNG", "JPEG"):
         output_format = "PNG"

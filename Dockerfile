@@ -27,13 +27,14 @@ RUN python -m pip install --upgrade pip setuptools wheel
 RUN python -m pip install torch torchvision \
     --index-url https://download.pytorch.org/whl/cu128
 
-# Diffusers (latest from git for Flux2Pipeline support)
-RUN python -m pip install git+https://github.com/huggingface/diffusers.git
-
-# Deps: transformers, bitsandbytes for 4-bit quantization, accelerate for offloading
+# Pinned versions — unpinned git-installs caused a load-time OOM regression on 32GB cards
 RUN python -m pip install \
-    transformers accelerate safetensors sentencepiece protobuf \
-    bitsandbytes
+    "diffusers==0.32.1" \
+    "transformers==4.47.1" \
+    "accelerate==1.2.1" \
+    "bitsandbytes==0.45.0" \
+    "safetensors>=0.4.5" \
+    sentencepiece protobuf
 
 # RunPod + utilities
 RUN python -m pip install runpod requests Pillow
