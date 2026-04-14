@@ -65,10 +65,13 @@ else:
 
 if COMPILE_TRANSFORMER and not USE_CPU_OFFLOAD:
     # Persist inductor cache on network volume so other workers skip recompile.
-    os.environ.setdefault(
-        "TORCHINDUCTOR_CACHE_DIR", "/runpod-volume/.torch_compile_cache"
+    # Force-override any RunPod-set default (which points at ephemeral /tmp).
+    cache_dir = os.environ.get(
+        "TORCH_COMPILE_CACHE_DIR", "/runpod-volume/.torch_compile_cache"
     )
-    print(f"  Compile cache dir: {os.environ['TORCHINDUCTOR_CACHE_DIR']}")
+    os.environ["TORCHINDUCTOR_CACHE_DIR"] = cache_dir
+    os.makedirs(cache_dir, exist_ok=True)
+    print(f"  Compile cache dir: {cache_dir}")
 
     # Block-level compile (PyTorch-recommended for diffusion transformers):
     # compiles repeated blocks instead of the whole model → 8–10x faster compile,
